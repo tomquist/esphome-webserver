@@ -3,6 +3,7 @@ import { customElement, state, query } from "lit/decorators.js";
 import { getBasePath } from "./esp-entity-table";
 
 import "./esp-entity-table";
+import "./esp-storage-dashboard"
 import "./esp-log";
 import "./esp-switch";
 import "./esp-logo";
@@ -206,6 +207,20 @@ export default class EspApp extends LitElement {
         </a>
         ${this.renderTitle()}
       </header>
+      <div class="flex-grid-half">
+        <section
+          id="col_entities"
+          class="col"
+        >
+          <solar-storage-ui number="1"></solar-storage-ui>
+        </section>
+        <section
+          id="col_entities"
+          class="col"
+        >
+          <solar-storage-ui number="2"></solar-storage-ui>
+        </section>
+      </div>
       <main class="flex-grid-half" @toggle-layout="${this._handleLayoutToggle}">
         <section
           id="col_entities"
