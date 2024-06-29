@@ -6,6 +6,7 @@ import "./esp-entity-table";
 import "./esp-storage-dashboard"
 import "./esp-log";
 import "./esp-switch";
+import "./esp-range-slider";
 import "./esp-logo";
 import cssReset from "./css/reset";
 import cssButton from "./css/button";
@@ -70,7 +71,7 @@ export default class EspApp extends LitElement {
 
   darkQuery: MediaQueryList = window.matchMedia("(prefers-color-scheme: dark)");
 
-  frames = [{}, { color: "red", transform: "scale(1.25)" }, {}];
+  frames = [{}, { color: "rgba(0, 196, 21, 0.75)" }, {}];
 
   constructor() {
     super();
@@ -120,6 +121,14 @@ export default class EspApp extends LitElement {
     setInterval(() => {
       this.connected = !!this.ping && Date.now() - this.lastUpdate < 15000;
     }, 5000);
+    document.addEventListener('entity-tab-header-double-clicked', (e) => {
+      const mainElement = this.shadowRoot?.querySelector('main.flex-grid-half');
+      mainElement?.classList.toggle('expanded_entity');
+    });
+    document.addEventListener('log-tab-header-double-clicked', (e) => {
+      const mainElement = this.shadowRoot?.querySelector('main.flex-grid-half');
+      mainElement?.classList.toggle('expanded_logs');
+    });
   }
 
   schemeDefault() {
@@ -151,7 +160,7 @@ export default class EspApp extends LitElement {
           enctype="multipart/form-data"
           class="tab-container"
         >
-          <input class="btn" type="file" name="update" />
+          <input class="btn" type="file" name="update" accept="application/octet-stream" />
           <input class="btn" type="submit" value="Update" />
         </form>`;
     }
@@ -162,7 +171,6 @@ export default class EspApp extends LitElement {
       ? html`<section
           id="col_logs"
           class="col"
-          @dblclick="${this._handleDblClick}"
         >
           <esp-log rows="50" .scheme="${this.scheme}"></esp-log>
         </section>`
@@ -188,9 +196,9 @@ export default class EspApp extends LitElement {
           <esp-logo></esp-logo>
         </a>
         <iconify-icon
-          .icon="${!!this.connected ? "mdi:heart" : "mdi:heart-off"}"
+          .icon="${!!this.connected ? "mdi:circle" : "mdi:circle-off-outline"}"
           .title="${this.uptime()}"
-          class="top-icon"
+          class="top-icon ${!!this.connected ? "connected" : ""}"
           id="beat"
         ></iconify-icon>
         <a
@@ -224,8 +232,7 @@ export default class EspApp extends LitElement {
       <main class="flex-grid-half" @toggle-layout="${this._handleLayoutToggle}">
         <section
           id="col_entities"
-          class="col"
-          @dblclick="${this._handleDblClick}"
+          class="col"          
         >
           <esp-entity-table .scheme="${this.scheme}"></esp-entity-table>
           ${this.renderOta()}
@@ -233,17 +240,6 @@ export default class EspApp extends LitElement {
         ${this.renderLog()}
       </main>
     `;
-  }
-
-  private _handleDblClick(e: Event) {
-    e.currentTarget?.parentNode?.classList.toggle(
-      "expanded_entity",
-      e.currentTarget?.id === "col_entities" ? undefined : false
-    );
-    e.currentTarget?.parentNode?.classList.toggle(
-      "expanded_logs",
-      e.currentTarget?.id === "col_logs" ? undefined : false
-    );
   }
 
   private _updateUptime(e: MessageEvent) {

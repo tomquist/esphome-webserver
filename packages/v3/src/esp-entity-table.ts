@@ -10,6 +10,7 @@ import "iconify-icon";
 
 interface entityConfig {
   unique_id: string;
+  sorting_weight: number;
   domain: string;
   id: string;
   state: string;
@@ -29,8 +30,8 @@ interface entityConfig {
   target_temperature_high?: number;
   min_temp?: number;
   max_temp?: number;
-  min_value?: number;
-  max_value?: number;
+  min_value?: string;
+  max_value?: string;
   step?: number;
   min_length?: number;
   max_length?: number;
@@ -98,15 +99,17 @@ export class EntityTable extends LitElement implements RestAction {
           this.has_controls = true;
         }
         this.entities.push(entity);
-        this.entities.sort((a, b) =>
-          a.entity_category < b.entity_category
-            ? -1
-            : a.entity_category == b.entity_category
-            ? a.name < b.name
-              ? -1
-              : 1
-            : 1
-        );
+        this.entities.sort((a, b) => {  
+          const sortA = a.sorting_weight ?? a.name;  
+          const sortB = b.sorting_weight ?? b.name;  
+          return a.entity_category < b.entity_category  
+            ? -1  
+            : a.entity_category == b.entity_category  
+            ? sortA < sortB  
+              ? -1  
+              : 1  
+            : 1  
+        });         
         this.requestUpdate();
       } else {
         if (typeof data.value === "number") {
@@ -185,7 +188,10 @@ export class EntityTable extends LitElement implements RestAction {
       <div>
         ${elems.map(
           (group) => html`
-            <div class="tab-header">
+            <div 
+              class="tab-header"
+              @dblclick="${this._handleTabHeaderDblClick}"
+            >
               ${EntityTable.ENTITY_CATEGORIES[parseInt(group.name)] ||
               EntityTable.ENTITY_UNDEFINED}
             </div>
@@ -240,7 +246,15 @@ export class EntityTable extends LitElement implements RestAction {
       );
     }
   }
+  _handleTabHeaderDblClick(e: Event) {
+    const doubleClickEvent = new CustomEvent('entity-tab-header-double-clicked', {
+      bubbles: true,
+      composed: true,
+    });
+    e.target?.dispatchEvent(doubleClickEvent);
+  }
 }
+
 
 type ActionRendererNonCallable = "entity" | "actioner" | "exec";
 type ActionRendererMethodKey = keyof Omit<
@@ -269,6 +283,30 @@ class ActionRenderer {
     >
       ${label}
     </button>`;
+  }
+
+  private _datetime(
+    entity: entityConfig,
+    type: string,
+    action: string,
+    opt: string,
+    value: string,
+  ) {
+    return html`
+      <input 
+        type="${type}" 
+        name="${entity.unique_id}"
+        id="${entity.unique_id}"
+        .value="${value}"
+        @change="${(e: Event) => {
+          const val = (<HTMLTextAreaElement>e.target)?.value;
+          this.actioner?.restAction(
+            entity,
+            `${action}?${opt}=${val.replace('T', ' ')}`
+          );
+        }}"
+      />
+    `;
   }
 
   private _switch(entity: entityConfig) {
@@ -313,34 +351,44 @@ class ActionRenderer {
     entity: entityConfig,
     action: string,
     opt: string,
-    value: number | string,
-    min?: number,
-    max?: number,
+    value: string | number,
+    min?: string | undefined,
+    max?: string | undefined,
     step = 1
   ) {
-    const val = Number(value);
-    let stepString = step.toString();
-    let numDecimalPlaces = 0
-    if (stepString.indexOf('.') !== -1) {
-      numDecimalPlaces = stepString.split('.')[1].length;
-    }
-    return html`<div class="range">
-      <label>${min || 0}</label>
-      <input
-        type="${entity.mode == 1 ? "number" : "range"}"
+    if(entity.mode == 1) {
+      return html`<div class="range">
+        <label>${min || 0}</label>
+        <input
+          type="${entity.mode == 1 ? "number" : "range"}"
+          name="${entity.unique_id}"
+          id="${entity.unique_id}"
+          step="${step}"
+          min="${min || Math.min(0, value as number)}"
+          max="${max || Math.max(10, value as number)}"
+          .value="${value}"
+          @change="${(e: Event) => {
+            const val = (<HTMLTextAreaElement>e.target)?.value;
+            this.actioner?.restAction(entity, `${action}?${opt}=${val}`);
+          }}"
+        />
+        <label>${max || 100}</label>
+      </div>`;      
+    } else {
+      return html`    
+      <esp-range-slider
         name="${entity.unique_id}"
-        id="${entity.unique_id}"
         step="${step}"
-        min="${min || Math.min(0, val)}"
-        max="${max || Math.max(10, val)}"
-        .value="${(val.toFixed(numDecimalPlaces))}"
-        @change="${(e: Event) => {
-          const val = (<HTMLTextAreaElement>e.target)?.value;
-          this.actioner?.restAction(entity, `${action}?${opt}=${val}`);
-        }}"
-      />
-      <label>${max || 100}</label>
-    </div>`;
+        min="${min}"
+        max="${max}"
+        .value="${value}"
+        @state="${(e: CustomEvent) => {
+            const val = (<HTMLTextAreaElement>e.target)?.value;
+            this.actioner?.restAction(entity, `${action}?${opt}=${e.detail.state}`);
+          }}"
+      ></esp-range-slider>`;
+    }
+
   }
 
   private _textinput(
@@ -360,7 +408,7 @@ class ActionRenderer {
         minlength="${min || Math.min(0, value as number)}"
         maxlength="${max || Math.max(255, value as number)}"
         pattern="${pattern || ""}"
-        value="${value!}"
+        .value="${value!}"
         @change="${(e: Event) => {
           const val = (<HTMLTextAreaElement>e.target)?.value;
           this.actioner?.restAction(
@@ -407,6 +455,45 @@ class ActionRenderer {
     ></iconify-icon>`;
   }
 
+  render_date() {
+    if (!this.entity) return;
+    return html`
+      ${this._datetime(
+        this.entity,
+        "date",
+        "set",
+        "value",
+        this.entity.value,
+      )}
+    `;
+  }
+
+  render_time() {
+    if (!this.entity) return;
+    return html`
+      ${this._datetime(
+        this.entity,
+        "time",
+        "set",
+        "value",
+        this.entity.value,
+      )}
+    `;
+  }
+
+  render_datetime() {
+    if (!this.entity) return;
+    return html`
+      ${this._datetime(
+        this.entity,
+        "datetime-local",
+        "set",
+        "value",
+        this.entity.value,
+      )}
+    `;
+  }
+
   render_switch() {
     if (!this.entity) return;
     if (this.entity.assumed_state)
@@ -439,7 +526,8 @@ class ActionRenderer {
   render_light() {
     if (!this.entity) return;
     return [
-      html`<div class="entity">
+      html`<div class="entity" style="
+      width: 100%;">
         ${this._switch(this.entity)}
         ${this.entity.brightness
           ? this._range(

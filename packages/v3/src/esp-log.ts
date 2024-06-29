@@ -50,7 +50,12 @@ export class DebugLog extends LitElement {
 
   render() {
     return html`
-      <div class="tab-header">Debug Log</div>
+      <div 
+        class="tab-header"
+        @dblclick="${this._handleTabHeaderDblClick}"
+      >
+        Debug Log
+      </div>
       <div class="tab-container">
         <div class="logs" color-scheme="${this.scheme}">
           <div class="thead trow">
@@ -75,6 +80,14 @@ export class DebugLog extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  _handleTabHeaderDblClick(e: Event) {
+    const doubleClickEvent = new CustomEvent('log-tab-header-double-clicked', {
+      bubbles: true,
+      composed: true,
+    });
+    e.target?.dispatchEvent(doubleClickEvent);
   }
 
   static get styles() {
@@ -107,18 +120,25 @@ export class DebugLog extends LitElement {
           align-self: flex-start;
           padding-right: 0.25em;
           flex: 2 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          min-width: 70px;
+
         }
         .trow > div:nth-child(2) {
-          flex: 1 0;
+          flex: 1 0;          
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 40px;
         }
         .trow > div:nth-child(3) {
           flex: 3 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .trow > div:last-child {
           flex: 15 0;
           padding-right: 0em;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         pre {
           margin: 0;

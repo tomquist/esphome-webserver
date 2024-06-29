@@ -3,7 +3,7 @@ import { css } from "lit";
 export default css`
   .flex-grid-half {
     display: grid;
-    grid-template-columns: 500px 2fr;
+    grid-template-columns: 600px 2fr;
   }
   .flex-grid-half.expanded_entity,
   .flex-grid-half.expanded_logs {
@@ -59,6 +59,9 @@ export default css`
   header #logo {
     float: left;
     color: rgba(127, 127, 127, 0.5);
+  }
+  .connected {
+    color: rgba(0, 157, 16, 0.75);
   }
   esp-logo {
     float: left;
