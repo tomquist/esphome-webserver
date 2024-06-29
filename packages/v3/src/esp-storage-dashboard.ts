@@ -24,45 +24,53 @@ export class SolarStorageUI extends LitElement {
       // binary_sensor-d2-i12__pv_2_-_transparent
       // number-d2-53__dod
       const regexp = new RegExp(
-        `^(sensor|switch|text|number|binary_sensor)-[da]${escapeRegex(
-          this.number
-        )}-[it]?\\d+_-?`
+        `^(sensor|switch|text(_sensor)?|number|binary_sensor|button)-b2500_-_(\\d)_-_(.*)__(.*)$`
       );
-      let id: string = data.id;
-      if (typeof id !== "string" || !regexp.test(id)) {
+      if (typeof data.id !== "string") {
         return;
       }
-      id = id.replace(regexp, "").replace(/^_+|_+$/g, "");
+      const match = data.id.match(regexp);
+      if (!match) {
+        return;
+      }
+      const [_, sensorType, __, deviceIdx, name, id] = match;
+      if (deviceIdx !== this.number) {
+        return;
+      }
+
 
       switch (id) {
-        case `pv_1_-_aktiv`:
+        case `pv_1_-_active`:
           this.pv1Active = data.value;
           break;
-        case `pv_2_-_aktiv`:
+        case `pv_2_-_active`:
           this.pv2Active = data.value;
           break;
-        case `pv_1_-_leistung`:
+        case `in_1_-_power`:
           this.pv1Power = data.value;
           break;
-        case `pv_2_-_leistung`:
+        case `in_2_-_power`:
           this.pv2Power = data.value;
           break;
-        case `szene`:
+        case `scene`:
           this.sunlightStatus = data.value;
           break;
-        case `ausgang_1_-_leistung`:
+        case `out_1_-_power`:
           this.outputPower1 = data.value;
           break;
-        case `ausgang_2_-_leistung`:
+        case `out_2_-_power`:
           this.outputPower2 = data.value;
           break;
-        case `f_llstand_der_batterie_in_prozent`:
+        case `total_power_out`:
+          this.outputTotal = data.value;
+          break;
+        case `battery_level`:
           this.batteryPercentage = data.value;
           break;
-        case `f_llstand_der_batterie_in_wh`:
+        case `battery_capacity`:
           this.energyStored = data.value;
           break;
-        case `last_response_${this.number}`:
+        case `last_response`:
           this.lastUpdate = data.value;
           break;
         case `dod`:
@@ -71,23 +79,23 @@ export class SolarStorageUI extends LitElement {
           this.dodMax = data.max_value;
           this.setDoD = (dod: number) => doAction(data.id, "set?value=" + dod);
           break;
-        case `entladeschwelle`:
+        case `discharge_threshold`:
           this.dischargeThreshold = data.value;
           this.dischargeThresholdMin = data.min_value;
           this.dischargeThresholdMax = data.max_value;
           this.setDischargeThreshold = (threshold: number) =>
             doAction(data.id, "set?value=" + threshold);
           break;
-        case "temperatur_1":
+        case "temperature_1":
           this.temperature1 = data.value;
           break;
-        case "temperatur_2":
+        case "temperature_2":
           this.temperature2 = data.value;
           break;
-        case "ausgang_1_-_aktiv":
+        case "out_1_-_active":
           this.outputEnabled1 = data.value;
           break;
-        case "power_out_1":
+        case "out_1_-_power":
           this.toggleOutput1 =
             data.value != null
               ? () =>
@@ -97,10 +105,10 @@ export class SolarStorageUI extends LitElement {
                   )
               : undefined;
           break;
-        case "ausgang_2_-_aktiv":
+        case "out_2_-_active":
           this.outputEnabled2 = data.value;
           break;
-        case "power_out_2":
+        case "out_2_-_power":
           this.toggleOutput2 =
             data.value != null
               ? () =>
@@ -109,6 +117,12 @@ export class SolarStorageUI extends LitElement {
                     data.value === true ? "turn_off" : "turn_on"
                   )
               : undefined;
+          break;
+        case `generation`:
+          this.deviceGeneration = data.value;
+          break;
+        case `name`:
+          this.deviceName = data.value;
           break;
         case `device_type`:
           this.deviceType = data.value;
@@ -119,7 +133,7 @@ export class SolarStorageUI extends LitElement {
         case "mac":
           this.mac = data.value;
           break;
-        case "bluetooth":
+        case "ble_connected":
           this.bluetooth = data.value;
           break;
         case "wifi_connected":
@@ -142,6 +156,7 @@ export class SolarStorageUI extends LitElement {
   @state() pv2Power?: number;
   @state() outputPower1?: number;
   @state() outputPower2?: number;
+  @state() outputTotal?: number;
   @state() outputEnabled1?: boolean;
   @state() outputEnabled2?: boolean;
   @state() toggleOutput1?: () => void;
@@ -161,6 +176,8 @@ export class SolarStorageUI extends LitElement {
   @state() lastUpdate?: string;
   @state() temperature1?: number;
   @state() temperature2?: number;
+  @state() deviceGeneration?: string;
+  @state() deviceName?: string;
   @state() deviceType?: string;
   @state() deviceId?: string;
   @state() mac?: string;
@@ -168,7 +185,7 @@ export class SolarStorageUI extends LitElement {
   @state() wifi?: boolean;
   @state() mqtt?: boolean;
 
-  @state() deviceInfoToShow: "deviceType" | "deviceId" | "mac" = "deviceType";
+  @state() deviceInfoToShow: "deviceName" | "deviceType" | "deviceId" | "mac" = "deviceName";
 
   static styles = [
     cssTab,
@@ -206,7 +223,6 @@ export class SolarStorageUI extends LitElement {
       }
 
       .battery {
-        border: 3px solid #333;
         width: 90px;
         height: 140px;
         padding: 10px;
@@ -234,8 +250,12 @@ export class SolarStorageUI extends LitElement {
         left: -5px;
         right: -5px;
         bottom: -5px;
-        border: 5px solid #fff;
+        border: 5px solid #333;
         border-radius: 10px;
+      }
+
+      .battery::after[color-scheme="dark"] {
+        border-color: #fff;
       }
 
       .battery-level {
@@ -445,6 +465,9 @@ export class SolarStorageUI extends LitElement {
 
   _toggleDeviceInfo(e: any) {
     switch (this.deviceInfoToShow) {
+      case "deviceName":
+        this.deviceInfoToShow = "deviceType";
+        break;
       case "deviceType":
         this.deviceInfoToShow = "deviceId";
         break;
@@ -515,6 +538,7 @@ export class SolarStorageUI extends LitElement {
               ? `${this.pv2Power}W`
               : "-"}</wattage-status-box
           >
+          ${this.deviceGeneration === "1" ? html`
           <wattage-status-box
             label="🔼 Out1"
             .active=${this.outputEnabled1}
@@ -532,13 +556,21 @@ export class SolarStorageUI extends LitElement {
             >${this.outputPower2 != null
               ? `${this.outputPower2}W`
               : "-"}</wattage-status-box
-          >
+          >` : html`
+            <wattage-status-box
+              label="🔼 Out"
+              .active=${this.outputEnabled1 || this.outputEnabled2}
+              .interactive=${false}
+            >${this.outputTotal != null
+              ? `${this.outputTotal}W`
+              : "-"}</wattage-status-box
+            >`}
         </div>
         <div class="battery">
           <div
             class="battery-level ${this.batteryPercentage != null &&
             this.dod != null &&
-            this.batteryPercentage <= 120 - this.dod
+            this.batteryPercentage <= 100 - this.dod
               ? "alert"
               : ""}"
             style="height: ${batteryHeight};"
@@ -563,8 +595,10 @@ export class SolarStorageUI extends LitElement {
           >
             ${this.dod ?? "-"}%
           </wattage-status-box>
+          ${this.deviceGeneration != null && this.deviceGeneration == "1" ? html` 
           <wattage-status-box
             label="🔋 Threshold"
+            
             .interactive=${true}
             .active=${false}
             @box-click=${() => {
@@ -573,6 +607,7 @@ export class SolarStorageUI extends LitElement {
           >
             ${this.dischargeThreshold ?? "-"}W
           </wattage-status-box>
+          ` : ""}
           <wattage-status-box
             label="🌡️ Temp"
             .interactive=${false}

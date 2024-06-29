@@ -8,16 +8,25 @@ export class WattageStatusBox extends LitElement {
   @property({ type: Boolean }) interactive = false;
 
   render() {
-    return html`
-      <button
-        class=${this.active ? "button active" : "button"}
-        ?disabled=${!this.interactive}
-        @click=${this._handleClick}
-      >
-        ${this.label}<br />
-        <slot></slot>
-      </button>
-    `;
+    if (this.interactive) {
+      return html`
+        <button
+          class="button ${this.active ? "active" : ""}"
+          ?disabled=${!this.interactive}
+          @click=${this._handleClick}
+        >
+          ${this.label}<br />
+          <slot></slot>
+        </button>
+      `;
+    } else {
+      return html`
+        <div class="button disabled ${this.active ? "active" : ""}">
+          ${this.label}<br />
+          <slot></slot>
+        </div>
+      `;
+    }
   }
 
   private _handleClick() {
@@ -30,10 +39,8 @@ export class WattageStatusBox extends LitElement {
       justify-content: center;
       align-items: center;
       padding: 8px 16px;
-      background-color: #1c1c1e;
       border: 1px solid #5f5f5f;
       border-radius: 14px;
-      color: white;
       font-size: 18px;
       text-align: center;
       text-decoration: none;
@@ -44,6 +51,8 @@ export class WattageStatusBox extends LitElement {
       min-width: 60px;
       min-height: 60px;
       box-sizing: border-box;
+      background-color: rgba(127, 127, 127, 0.3);
+      color: none;
     }
 
     @media (min-width: 768px) {
@@ -53,12 +62,13 @@ export class WattageStatusBox extends LitElement {
       }
     }
 
-    .button.active {
-      background-color: #007aff;
+    .button.disabled {
+      cursor: not-allowed;
+      background-color: rgba(127, 127, 127, 0.3);
     }
 
-    .button:disabled {
-      cursor: not-allowed;
+    .button.active {
+      background-color: #007aff;
     }
 
     .button:active {

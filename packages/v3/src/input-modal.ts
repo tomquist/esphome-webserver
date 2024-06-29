@@ -12,14 +12,13 @@ export class InputModal extends LitElement {
       width: 100%;
       height: 100%;
       overflow: auto;
-      background-color: rgb(0, 0, 0);
       background-color: rgba(0, 0, 0, 0.4);
     }
     .modal-content {
-      background-color: #000;
+      background-color: rgb(127, 127, 127);
       margin: 15% auto;
       padding: 20px;
-      border: 1px solid #888;
+      border: 2px solid rgba(255, 255, 255, 0.5);
       max-width: 300px;
       width: 100%;
     }
